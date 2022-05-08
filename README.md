@@ -1,6 +1,6 @@
 # Haqua.Scriban
 
-Integrate [Scriban](https://github.com/scriban/scriban) Template Engine to ASP.NET Core Minimal API.
+Integrate [Scriban](https://github.com/scriban/scriban) Template Engine with ASP.NET Core Minimal API.
 
 [Scriban](https://github.com/scriban/scriban) is a fast, powerful, safe and lightweight scripting language and engine for .NET, which was primarily developed for text templating with a compatibility mode for parsing liquid templates.
 
