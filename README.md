@@ -28,5 +28,9 @@ app.MapGet("/", () => Results.Extensions.ScribanView(
 app.Run();
 ```
 
+## Roadmap
+- Add layout feature
+- Add html minification feature
+
 ## License
 This software is released under the [BSD-Clause 2 license](https://opensource.org/licenses/BSD-2-Clause).
