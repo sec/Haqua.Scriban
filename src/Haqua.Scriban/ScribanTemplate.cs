@@ -1,25 +1,39 @@
 using Scriban;
 using Scriban.Runtime;
+using WebMarkupMin.Core;
 
 namespace Haqua.Scriban;
 
 public class ScribanTemplate
 {
-    private readonly ScribanTemplateOptions _options;
-
+    private readonly ITemplateLoader _templateLoader;
     private readonly Dictionary<string, string> _templates = new();
 
     public ScribanTemplate(ScribanTemplateOptions options)
     {
-        _options = options;
+        LoadTemplate(options);
+        _templateLoader = new IncludeFromDictionary(_templates);
     }
 
-    public void LoadTemplate()
+    public ValueTask<string> RenderAsync(string views, object? model = null)
+    {
+        var scriptObject = new ScriptObject { ["model"] = model };
+
+        var context = new TemplateContext { TemplateLoader = _templateLoader };
+        context.PushGlobal(scriptObject);
+
+        var template = Template.Parse(_templates[views]);
+        return template.RenderAsync(context);
+    }
+
+    private void LoadTemplate(ScribanTemplateOptions options)
     {
         _templates.Clear();
 
-        var viewsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _options.Directory ?? "");
+        var viewsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, options.Directory ?? "");
         var views = Directory.GetFiles(viewsDir, "*.html", SearchOption.AllDirectories);
+
+        var htmlMinifier = new HtmlMinifier();
 
         foreach (var view in views)
         {
@@ -27,22 +41,17 @@ public class ScribanTemplate
                 .Replace(viewsDir + Path.DirectorySeparatorChar, "")
                 .Replace("\\", "/");
 
-            var value = File.ReadAllText(view);
+            var viewFile = File.ReadAllText(view);
 
-            _templates.Add(key, value);
+            if (options.MinifyTemplate)
+            {
+                var viewMinified = htmlMinifier.Minify(viewFile, false);
+                _templates.Add(key, viewMinified.MinifiedContent);
+            }
+            else
+            {
+                _templates.Add(key, viewFile);
+            }
         }
-    }
-
-    public ValueTask<string> RenderAsync(string views, object? model = null)
-    {
-        var scriptObject = new ScriptObject();
-        scriptObject["model"] = model;
-
-        var context = new TemplateContext();
-        context.TemplateLoader = new IncludeFromDictionary(_templates);
-        context.PushGlobal(scriptObject);
-
-        var template = Template.Parse(_templates[views]);
-        return template.RenderAsync(context);
     }
 }

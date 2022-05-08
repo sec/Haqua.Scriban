@@ -9,14 +9,7 @@ public static class ScribanTemplateServiceCollectionExtensions
         this IServiceCollection services,
         ScribanTemplateOptions options)
     {
-        services.TryAddSingleton(_ =>
-        {
-            var scribanTemplate = new ScribanTemplate(options);
-            scribanTemplate.LoadTemplate();
-
-            return scribanTemplate;
-        });
-
+        services.TryAddSingleton(_ => new ScribanTemplate(options));
         return services;
     }
 }

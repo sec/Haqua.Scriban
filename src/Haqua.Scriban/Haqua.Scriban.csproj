@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <PackageReference Include="Scriban" Version="5.4.4"/>
+        <PackageReference Include="WebMarkupMin.Core" Version="2.9.0"/>
     </ItemGroup>
 
 </Project>
