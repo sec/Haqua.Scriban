@@ -3,7 +3,7 @@ using Scriban.Runtime;
 
 namespace Haqua.Scriban;
 
-internal class ScribanTemplate
+public class ScribanTemplate
 {
     private readonly ScribanTemplateOptions _options;
 
