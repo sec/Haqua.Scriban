@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>{{ model.title }}</title>
+    <title>{{ title }}</title>
     <link href="/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="/css/site.css" rel="stylesheet"/>
 </head>
@@ -12,7 +12,8 @@
     <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
         <div class="container-fluid">
             <a class="navbar-brand">Web</a>
-            <button aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler"
+            <button aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
+                    class="navbar-toggler"
                     data-bs-target=".navbar-collapse"
                     data-bs-toggle="collapse" type="button">
                 <span class="navbar-toggler-icon"></span>
@@ -30,3 +31,18 @@
         </div>
     </nav>
 </header>
+<div class="container">
+    <main class="pb-3" role="main">
+        {{ content }}
+    </main>
+</div>
+<footer class="border-top footer text-muted">
+    <div class="container">
+        &copy; 2022 - Web - <a>Privacy</a>
+    </div>
+</footer>
+<script src="/lib/jquery/dist/jquery.min.js"></script>
+<script src="/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/site.js"></script>
+</body>
+</html>

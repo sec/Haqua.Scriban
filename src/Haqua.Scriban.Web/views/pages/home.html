@@ -1,12 +1,10 @@
-{{ include "partials/header.html" }}
+{{ capture title }} Home {{ end }}
 
-<div class="container">
-    <main class="pb-3" role="main">
-        <div class="text-center">
-            <h1 class="display-4">Welcome {{ model.name }}</h1>
-            <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-        </div>
-    </main>
+{{ capture content }}
+<div class="text-center">
+    <h1 class="display-4">{{ model.name }}</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
+{{ end }}
 
-{{ include "partials/footer.html" }}
+{{ include "layouts/_layout.html" }}

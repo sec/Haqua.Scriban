@@ -6,13 +6,15 @@ namespace Haqua.Scriban;
 
 public class ScribanTemplate
 {
-    private readonly ITemplateLoader _templateLoader;
+    private readonly ScribanTemplateOptions _options;
     private readonly Dictionary<string, string> _templates = new();
+    private ITemplateLoader? _templateLoader;
 
     public ScribanTemplate(ScribanTemplateOptions options)
     {
-        LoadTemplate(options);
-        _templateLoader = new IncludeFromDictionary(_templates);
+        _options = options;
+
+        LoadTemplate();
     }
 
     public ValueTask<string> RenderAsync(string views, object? model = null)
@@ -26,11 +28,11 @@ public class ScribanTemplate
         return template.RenderAsync(context);
     }
 
-    private void LoadTemplate(ScribanTemplateOptions options)
+    private void LoadTemplate()
     {
         _templates.Clear();
 
-        var viewsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, options.Directory ?? "");
+        var viewsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _options.Directory ?? "");
         var views = Directory.GetFiles(viewsDir, "*.html", SearchOption.AllDirectories);
 
         var htmlMinifier = new HtmlMinifier();
@@ -43,7 +45,7 @@ public class ScribanTemplate
 
             var viewFile = File.ReadAllText(view);
 
-            if (options.MinifyTemplate)
+            if (_options.MinifyTemplate)
             {
                 var viewMinified = htmlMinifier.Minify(viewFile, false);
                 _templates.Add(key, viewMinified.MinifiedContent);
@@ -53,5 +55,7 @@ public class ScribanTemplate
                 _templates.Add(key, viewFile);
             }
         }
+
+        _templateLoader = new IncludeFromDictionary(_templates);
     }
 }

@@ -10,11 +10,7 @@ app.UseStaticFiles();
 
 app.MapGet("/", () => Results.Extensions.ScribanView(
     "pages/home.html",
-    new
-    {
-        Title = "Home",
-        Name = "Scriban Template Engine"
-    }
+    new { Name = "Scriban Template" }
 ));
 
 app.Run();
