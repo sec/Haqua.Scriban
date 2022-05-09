@@ -10,23 +10,20 @@ using Haqua.Scriban;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScribanTemplate(new ScribanTemplateOptions { Directory = "views" });
+builder.Services.AddScribanTemplate();
 
 var app = builder.Build();
 
 app.UseStaticFiles();
 
-app.MapGet("/", () => Results.Extensions.ScribanView(
-    "pages/home.html",
-    new
-    {
-        Title = "Home",
-        Name = "Scriban Template Engine"
-    }
-));
+app.MapGet("/", () => new ScribanView("pages/home.html", new { Name = "Scriban Template" }));
 
 app.Run();
 ```
+
+## Features
+- Runtime template compilation
+- HTML minifier
 
 ## Roadmap
 - Add documentation

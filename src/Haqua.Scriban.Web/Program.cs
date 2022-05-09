@@ -2,18 +2,12 @@ using Haqua.Scriban;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScribanTemplate(new ScribanTemplateOptions
-{
-    ViewDirectory = Environment.CurrentDirectory + Path.DirectorySeparatorChar + "views"
-});
+builder.Services.AddScribanTemplate();
 
 var app = builder.Build();
 
 app.UseStaticFiles();
 
-app.MapGet("/", () => Results.Extensions.ScribanView(
-    "pages/home.html",
-    new { Name = "Scriban Template" }
-));
+app.MapGet("/", () => new ScribanView("pages/home.html", new { Name = "Scriban Template" }));
 
 app.Run();

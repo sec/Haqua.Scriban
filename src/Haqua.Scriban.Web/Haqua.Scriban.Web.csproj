@@ -7,15 +7,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Scriban" Version="5.4.4"/>
+        <PackageReference Include="Scriban" Version="5.4.4" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="views\**" CopyToOutputDirectory="PreserveNewest"/>
+        <None Update="views\**" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Haqua.Scriban\Haqua.Scriban.csproj"/>
+        <ProjectReference Include="..\Haqua.Scriban\Haqua.Scriban.csproj" />
     </ItemGroup>
 
 </Project>

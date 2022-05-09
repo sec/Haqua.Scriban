@@ -1,3 +1,4 @@
+using Microsoft.Extensions.FileProviders;
 using Scriban;
 using Scriban.Runtime;
 using WebMarkupMin.Core;
@@ -6,7 +7,6 @@ namespace Haqua.Scriban;
 
 public class ScribanTemplate : IDisposable
 {
-    private readonly FileSystemWatcher _fileSystemWatcher;
     private readonly HtmlMinifier _htmlMinifier;
     private readonly ScribanTemplateOptions _options;
     private readonly Dictionary<string, string> _templates = new();
@@ -18,20 +18,20 @@ public class ScribanTemplate : IDisposable
         _options = options;
 
         _htmlMinifier = new HtmlMinifier();
-        _fileSystemWatcher = new FileSystemWatcher();
 
-        if (_options.WatchChanged) WatchViewDirectoryChange();
+        if (_options.WatchChanged)
+            Task.Run(() => WatchViewDirectoryChangeAsync());
     }
 
     public void Dispose()
     {
-        _fileSystemWatcher.Dispose();
+        _options.FileProvider?.Dispose();
         GC.SuppressFinalize(this);
     }
 
     public async Task<string> RenderAsync(string viewPath, object? model = null)
     {
-        if (_templates.Count == 0) await LoadTemplateFromDirectory();
+        if (_templates.Count == 0) await LoadTemplateFromDirectory().ConfigureAwait(false);
 
         var scriptObject = new ScriptObject { ["model"] = model };
 
@@ -39,68 +39,55 @@ public class ScribanTemplate : IDisposable
         context.PushGlobal(scriptObject);
 
         var template = Template.Parse(_templates[viewPath]);
-        var result = await template.RenderAsync(context);
+        var result = await template.RenderAsync(context).ConfigureAwait(false);
 
         return result;
     }
 
     private async Task LoadTemplateFromDirectory()
     {
-        if (_options.ViewDirectory == null) throw new ArgumentNullException();
-
         _templates.Clear();
 
-        var viewFiles = Directory.GetFiles(_options.ViewDirectory, "*.html", SearchOption.AllDirectories);
-        foreach (var viewPath in viewFiles) await LoadTemplate(viewPath);
+        foreach (var file in _options.FileProvider!.GetRecursiveFiles(""))
+            await LoadTemplate(file).ConfigureAwait(false);
 
         _templateLoader = new IncludeFromDictionary(_templates);
     }
 
-    private async Task LoadTemplate(string viewPath)
+    private async Task LoadTemplate(IFileInfo file)
     {
-        var fileReady = false;
-        while (!fileReady)
-            try
-            {
-                var view = await File.ReadAllTextAsync(viewPath);
-                fileReady = true;
+        await using var readStream = file.CreateReadStream();
+        using var streamReader = new StreamReader(readStream);
 
-                var viewName = viewPath
-                    .Replace(_options.ViewDirectory + Path.DirectorySeparatorChar, "")
-                    .Replace("\\", "/");
+        var fileValue = await streamReader.ReadToEndAsync().ConfigureAwait(false);
+        var fileName = file.PhysicalPath
+            .Replace(_options.FileProvider!.Root, "")
+            .Replace("\\", "/");
 
-                if (_options.MinifyTemplate)
-                {
-                    var viewMinified = _htmlMinifier.Minify(view, false);
-                    _templates[viewName] = viewMinified.MinifiedContent;
-                }
-                else
-                {
-                    _templates[viewName] = view;
-                }
-            }
-            catch (IOException _)
-            {
-                await Task.Delay(100);
-            }
+        if (_options.MinifyTemplate)
+        {
+            var viewMinified = _htmlMinifier.Minify(fileValue, false);
+            _templates[fileName] = viewMinified.MinifiedContent;
+        }
+        else
+        {
+            _templates[fileName] = fileValue;
+        }
     }
 
-    private void WatchViewDirectoryChange()
+    private async Task WatchViewDirectoryChangeAsync()
     {
-        if (_options.ViewDirectory == null) throw new ArgumentNullException();
+        while (true)
+        {
+            var token = _options.FileProvider!.Watch("**/*.html");
+            var taskCompletion = new TaskCompletionSource<object?>();
 
-        _fileSystemWatcher.Path = _options.ViewDirectory;
+            token.RegisterChangeCallback(
+                state => ((TaskCompletionSource<object?>)state).TrySetResult(null),
+                taskCompletion);
 
-        _fileSystemWatcher.Changed += OnViewChanged;
-        _fileSystemWatcher.Renamed += OnViewChanged;
-
-        _fileSystemWatcher.IncludeSubdirectories = true;
-        _fileSystemWatcher.EnableRaisingEvents = true;
-    }
-
-    private void OnViewChanged(object s, FileSystemEventArgs e)
-    {
-        var viewPath = e.FullPath.TrimEnd('~');
-        LoadTemplate(viewPath);
+            await taskCompletion.Task.ConfigureAwait(false);
+            await LoadTemplateFromDirectory().ConfigureAwait(false);
+        }
     }
 }
