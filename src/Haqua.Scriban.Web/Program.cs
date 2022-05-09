@@ -2,7 +2,10 @@ using Haqua.Scriban;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScribanTemplate(new ScribanTemplateOptions { Directory = "views" });
+builder.Services.AddScribanTemplate(new ScribanTemplateOptions
+{
+    ViewDirectory = Environment.CurrentDirectory + Path.DirectorySeparatorChar + "views"
+});
 
 var app = builder.Build();
 
