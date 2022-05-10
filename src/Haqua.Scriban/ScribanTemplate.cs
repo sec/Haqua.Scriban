@@ -1,17 +1,19 @@
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Primitives;
 using Scriban;
 using Scriban.Runtime;
 using WebMarkupMin.Core;
 
 namespace Haqua.Scriban;
 
-public class ScribanTemplate : IDisposable
+public class ScribanTemplate
 {
+    private const string Views = "views";
+
     private readonly HtmlMinifier _htmlMinifier;
     private readonly ScribanTemplateOptions _options;
-    private readonly Dictionary<string, string> _templates = new();
-
-    private ITemplateLoader? _templateLoader;
+    private readonly IncludeFromDictionary _templateLoader = new();
+    private readonly Dictionary<string, Template> _templates = new();
 
     public ScribanTemplate(ScribanTemplateOptions options)
     {
@@ -20,74 +22,74 @@ public class ScribanTemplate : IDisposable
         _htmlMinifier = new HtmlMinifier();
 
         if (_options.WatchChanged)
-            Task.Run(() => WatchViewDirectoryChangeAsync());
-    }
-
-    public void Dispose()
-    {
-        _options.FileProvider?.Dispose();
-        GC.SuppressFinalize(this);
+        {
+            WatchViewDirectoryChange();
+        }
     }
 
     public async Task<string> RenderAsync(string viewPath, object? model = null)
     {
-        if (_templates.Count == 0) await LoadTemplateFromDirectory().ConfigureAwait(false);
+        if (_templates.Count == 0)
+        {
+            await LoadTemplateFromDirectoryAsync().ConfigureAwait(false);
+        }
 
         var scriptObject = new ScriptObject { ["model"] = model };
 
         var context = new TemplateContext { TemplateLoader = _templateLoader };
         context.PushGlobal(scriptObject);
 
-        var template = Template.Parse(_templates[viewPath]);
-        var result = await template.RenderAsync(context).ConfigureAwait(false);
+        foreach (var template in _templates)
+        {
+            context.CachedTemplates.Add(template.Key, template.Value);
+        }
 
+        var result = await _templates[viewPath].RenderAsync(context).ConfigureAwait(false);
         return result;
     }
 
-    private async Task LoadTemplateFromDirectory()
+    private async Task LoadTemplateFromDirectoryAsync()
     {
+        if (!_options.FileProvider!.GetDirectoryContents(Views).Exists)
+        {
+            throw new DirectoryNotFoundException(_options.FileProvider.GetFileInfo(Views).PhysicalPath);
+        }
+
         _templates.Clear();
 
-        foreach (var file in _options.FileProvider!.GetRecursiveFiles(""))
-            await LoadTemplate(file).ConfigureAwait(false);
-
-        _templateLoader = new IncludeFromDictionary(_templates);
+        foreach (var file in _options.FileProvider!.GetRecursiveFiles(Views))
+        {
+            await LoadTemplateAsync(file).ConfigureAwait(false);
+        }
     }
 
-    private async Task LoadTemplate(IFileInfo file)
+    private async Task LoadTemplateAsync(IFileInfo file)
     {
         await using var readStream = file.CreateReadStream();
         using var streamReader = new StreamReader(readStream);
 
         var fileValue = await streamReader.ReadToEndAsync().ConfigureAwait(false);
+
         var fileName = file.PhysicalPath
-            .Replace(_options.FileProvider!.Root, "")
+            .Replace(_options.FileProvider!.GetFileInfo(Views).PhysicalPath, "")
+            .TrimStart(Path.DirectorySeparatorChar)
             .Replace("\\", "/");
 
         if (_options.MinifyTemplate)
         {
             var viewMinified = _htmlMinifier.Minify(fileValue, false);
-            _templates[fileName] = viewMinified.MinifiedContent;
+            _templates[fileName] = Template.Parse(viewMinified.MinifiedContent);
         }
         else
         {
-            _templates[fileName] = fileValue;
+            _templates[fileName] = Template.Parse(fileValue);
         }
     }
 
-    private async Task WatchViewDirectoryChangeAsync()
+    private void WatchViewDirectoryChange()
     {
-        while (true)
-        {
-            var token = _options.FileProvider!.Watch("**/*.html");
-            var taskCompletion = new TaskCompletionSource<object?>();
-
-            token.RegisterChangeCallback(
-                state => ((TaskCompletionSource<object?>)state).TrySetResult(null),
-                taskCompletion);
-
-            await taskCompletion.Task.ConfigureAwait(false);
-            await LoadTemplateFromDirectory().ConfigureAwait(false);
-        }
+        ChangeToken.OnChange(
+            () => _options.FileProvider!.Watch("**/*.html"),
+            () => LoadTemplateFromDirectoryAsync().ConfigureAwait(false));
     }
 }
